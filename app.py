@@ -17,7 +17,8 @@ SCOPES = ['user/Sequence.read',
         'user/Observation.read',
         'user/Condition.read',
         'user/Patient.read',
-        'user/Procedure.read']
+        'user/Procedure.read',
+        'user/MedicationPrescription.read']
 
 app = Flask(__name__)
 
