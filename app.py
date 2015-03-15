@@ -19,6 +19,17 @@ SCOPES = ['user/Sequence.read',
         'user/Patient.read',
         'user/Procedure.read',
         'user/MedicationPrescription.read']
+        
+CYP2C19_SNP_STAR_TRANSLATION = {
+  'rs4244285' : { 'normal': 'G', 'star': '*2' },
+  'rs4986893' : { 'normal': 'G', 'star': '*3' },
+  'rs28399504' : { 'normal': 'A', 'star': '*4' },
+  'rs56337013' : { 'normal': 'C', 'star': '*5' },
+  'rs72552267' : { 'normal': 'G', 'star': '*6' },
+  'rs72558186' : { 'normal': 'T', 'star': '*7' },
+  'rs41291556' : { 'normal': 'T', 'star': '*8' },
+  'rs12248560' : { 'normal': 'C', 'star': '*17' }
+}
 
 app = Flask(__name__)
 
@@ -60,7 +71,7 @@ def to_internal_id(full_id):
     else:
         internal_id = full_id[len(API_BASE)+1:]
 
-    return '<a href="/resources/%s">%s...</a>'% (internal_id, internal_id[:MAX_LINK_LEN])
+    return '<a href="/%s">%s...</a>'% (internal_id, internal_id[:MAX_LINK_LEN])
 
 def has_access():
     '''
@@ -100,7 +111,7 @@ def make_links(resource):
                 if isinstance(v, dict):
                     make_links(v)
         elif isinstance(v, basestring) and REF_RE.match(v) is not None:
-            resource[k] = "<a href='/resources/%s'>%s</a>"% (v, v)
+            resource[k] = "<a href='/%s'>%s</a>"% (v, v)
 
 
 def get_code_snippet(resource):
@@ -130,12 +141,45 @@ def require_oauth(view):
     
     return authorized_view
 
+def translate_snp_to_star_variant(lookup_table, snps, default):
+    star_variants = [default, default]
+    for snp in snps:
+        values = snp['value'].split('/')
+        snp_info = lookup_table[snp['code']]
+        # Homozygote
+        if snp_info['normal'] != values[0] and snp_info['normal'] != values[1]:
+            star_variants = [snp_info['star'], snp_info['star']]
+        # Heterozygote
+        elif snp_info['normal'] != values[0] or snp_info['normal'] != values[1]:
+            # If this is the second homozygote result, move over the first default value
+            if star_variants[1] != default:
+                star_variants[0] = star_variants[1]
+            star_variants[1] = snp_info['star']
+    return star_variants
+    
 
 @app.route('/')
 @require_oauth
 def index():
-    return redirect('/resources/Observation')
+    return forward_api('Patient')
 
+@app.route('/Patient/<path:patient_id>')
+@require_oauth
+def patient(patient_id):
+    if (not patient_id):
+        return forward_api('Patient')
+
+    print 'Displaying patient: ' + patient_id
+    meds = get_fhir_bundle('MedicationPrescription', {'patient': patient_id})
+    seq = get_fhir_bundle('Sequence', {'patient': patient_id})
+    cyp2c19 = get_fhir_bundle('Observation', {'subject:Patient': patient_id, 'name': '124020'})
+    patient = get_fhir_bundle('Patient/' + patient_id, {})
+    
+    print translate_snp_to_star_variant(CYP2C19_SNP_STAR_TRANSLATION, seq['entry'], '*1')
+    #print translate_snp_to_star_variant(CYP2C19_SNP_STAR_TRANSLATION, [{'code': 'rs4244285', 'value': 'A/G'}, {'code': 'rs28399504', 'value': 'A/A'}], '*1')
+    return render_template('genomics_view.html', patient= patient['entry'], medications= meds['entry'], observations= cyp2c19['entry'], sequences= seq['entry'])
+        
+    
 
 @app.route('/recv_redirect')
 def recv_code():
@@ -145,11 +189,8 @@ def recv_code():
     resp.set_cookie('access_token', access_token)
     return resp
 
-
-@app.route('/resources/<path:forwarded_url>')
-@require_oauth
-def forward_api(forwarded_url):
-    forward_args = request.args.to_dict(flat=False)
+def get_fhir_bundle(forwarded_url, forward_args):
+    #forward_args = request.args.to_dict(flat=False)
     forward_args['_format'] = 'json'
     api_url = '/%s?%s'% (forwarded_url, urlencode(forward_args, doseq=True))
     api_resp = api_call(api_url)
@@ -169,6 +210,11 @@ def forward_api(forwarded_url):
     elif len(bundle.get('entry', [])) > 0:
         bundle['resourceType'] = bundle['entry'][0]['content']['resourceType']
 
+    return bundle
+    
+
+def forward_api(forwarded_url):
+    bundle = get_fhir_bundle(forwarded_url, request.args.to_dict(flat=False))
     return render_fhir(bundle)
 
 
