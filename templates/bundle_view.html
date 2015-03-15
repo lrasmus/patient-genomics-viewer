@@ -28,29 +28,13 @@
         <div class="navbar-header">
           <a class="navbar-brand" href="#">SMART on FHIR - Patient Genomics Viewer</a>
         </div>
-        <div id="navbar" class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">
-            <li class="dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">{{ resourceType }}<span class="caret"></span></a>
-            <ul class="dropdown-menu" role="menu">
-              <li><a href="/resources/Patient">Patient</a></li>
-              <li><a href="/resources/Procedure">Procedure (Sequencing Lab)</a></li>
-              <li><a href="/resources/Sequence">Sequence</a></li>
-              <li><a href="/resources/Condition">Condition</a></li>
-              <li><a href="/resources/Observation">Observation (Genetic Observation)</a></li>
-              <li><a href="/resources/MedicationPrescription">Medication Prescription</a></li>
-            </ul>
-            </li>
-          </ul>
-        </div>
       </div>
       </nav>
       {% if entry %}
       <table class="table">
         <tr>
-          <th>Resource id</th>
-          <th>Narrative</th>
-          <th>Summary</th>
+          <th>Patient ID</th>
+          <th>Name</th>
         </tr>
         {% for resource in entry %}
         <tr>
@@ -61,13 +45,6 @@
           {% else %}
             N/A
           {% endif %}
-          </td>
-          <td>
-            {% if resource.summary %}
-              {{ resource.summary }}
-            {% else %}
-              N/A
-            {% endif %}
           </td>
         </tr>
         {% endfor %}

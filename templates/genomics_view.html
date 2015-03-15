@@ -17,25 +17,25 @@
       <nav class="navbar navbar-default">
       <div class="container-fluid">
         <div class="navbar-header">
-          <a class="navbar-brand" href="#">SMART on FHIR - Patient Genomics Viewer for {{ patient[0].content.name[0].text }}</a>
+          <a class="navbar-brand" href="/">SMART on FHIR - Patient Genomics Viewer for {{ patient[0].content.name[0].text }}</a>
         </div>
       </div>
       </nav>
       {% for phenotype in phenotypes %}
       <div class="row">
-        <div class="col-md-2"></div>
-        <div class="col-md-8 phenotypes {{phenotype.display_class}}">
+        <div class="col-sm-1"></div>
+        <div class="col-sm-10 phenotypes {{phenotype.display_class}}">
           {{ phenotype.text }}
           <div class="explanation">
           {{ phenotype.details }}
           </div>
         </div>
-        <div class="col-md-2"></div>
+        <div class="col-sm-1"></div>
       </div>
       {% endfor %}
       
       <div class="row">
-        <div class="col-md-6">
+        <div class="col-sm-6">
           <h2>Current Medications</h2>
           {% if medications %}
             <ul>
@@ -47,7 +47,7 @@
           {% endif %}
         </div>
         
-        <div class="col-md-6">
+        <div class="col-sm-6">
           <h2>Genotype Results</h2>
           {% if observations or sequences %}
             <ul>

@@ -52,10 +52,21 @@ CYP2C19_LOOKUP = {
 CYP2C19_DETAILS = {
   'Extensive Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, you should be able to process it normally.', 'You should be able to process your clopidogrel normally.'],
   'Ultrarapid Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, you should be able to process it normally.', 'You should be able to process your clopidogrel normally.'],
-  'Intermediate Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, there is a chance you may be at a risk for an adverse cardiovascular event.  You should share these results with your care team.', 'People with your genotype are at a slight risk for an adverse cardiovascular event while taking clopidogrel.  You should share these results with your care team, and see if your physician may want to switch you to another medication.'],
-  'Poor Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, you are at risk for an adverse cardiovascular event.  You should share these results with your care team.', 'People with your genotype are at risk for an adverse cardiovascular event while taking clopidogrel.  You should share these results with your care team, and see if your physician may want to switch you to another medication.']
+  'Intermediate Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, there is a chance you may be at a risk for an adverse cardiovascular event.  You should share these results with your care team.', 'People with your genotype are at a slight risk for an adverse cardiovascular event while taking clopidogrel.  You should share these results with your care team. Your physician may decide to switch you to another medication.'],
+  'Poor Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, you are at risk for an adverse cardiovascular event.  You should share these results with your care team.', 'People with your genotype are at risk for an adverse cardiovascular event while taking clopidogrel.  You should share these results with your care team. Your physician may decide to switch you to another medication.']
 }
 
+SLCO1B1_LOOKUP = {
+  'T/T': {'text': 'Normal Function', 'display_class': 'normal'},
+  'C/T': {'text': 'Intermediate Function', 'display_class': 'warn'},
+  'C/C': {'text': 'Low Function', 'display_class': 'alert'}
+}
+
+SLCO1B1_DETAILS = {
+  'Normal Function': ['If your doctor ever prescribes you the drug simvastatin, you should be able to process it normally.', 'You should be able to process your simvastatin normally.'],
+  'Intermediate Function': ['If your doctor ever prescribes you the drug simvastatin, you are at risk for myopathy if you are given the typical dose.  You should share these results with your care team.', 'People with your genotype are at risk for myopathy while taking simvastatin.  You should share these results with your care team.  Your physician may decide to change your dose, or switch you to another medication.'],
+  'Low Function': ['If your doctor ever prescribes you the drug simvastatin, you are at risk for myopathy, even if you are put on a lower dose.  You should share these results with your care team.', 'People with your genotype are at risk for myopathy while taking simvastatin.  You should share these results with your care team.  Your physician may decide to switch you to another medication.'],
+}
 
 app = Flask(__name__)
 
@@ -239,7 +250,18 @@ def patient(patient_id):
     if cyp2c19_phenotype:
       found_med = next((med for med in meds['entry'] if med['content']['medication']['reference'] == 'Medication/clopidogrel'), None)
       phenotypes[0]['details'] = get_details(CYP2C19_DETAILS, cyp2c19_phenotype['text'], not (found_med is None))
+      
+      
+    slco1b1_phenotype = None
+    slco1b1_snp = next((s for s in seq['entry'] if s['content']['snp'] == 'rs4149056'), None)
+    if not slco1b1_snp is None:
+        slco1b1_phenotype = translate_genotype_to_phenotype(SLCO1B1_LOOKUP, '/'.join(slco1b1_snp['content']['read']), {'text': 'Normal Function', 'display_class': 'normal'})
+        phenotypes.append({'text': 'You are predicted to have ' + slco1b1_phenotype['text'] + ' in trying to process the drug simvastatin', 'display_class': slco1b1_phenotype['display_class']})  
 
+    if slco1b1_phenotype:
+      found_med = next((med for med in meds['entry'] if med['content']['medication']['reference'] == 'Medication/simvastatin'), None)
+      phenotypes[0]['details'] = get_details(SLCO1B1_DETAILS, slco1b1_phenotype['text'], not (found_med is None))
+        
     return render_template('genomics_view.html', patient= patient['entry'], medications= meds['entry'], observations= cyp2c19['entry'], sequences= seq['entry'], phenotypes= phenotypes)
         
     
