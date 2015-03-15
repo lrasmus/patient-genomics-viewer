@@ -9,6 +9,7 @@ body {
 
 .phenotypes {
   background-color: #EEEEEE;
+  color: #000;
   text-align: center;
   padding: 20px;
   font-size: 1.2em;
@@ -17,14 +18,21 @@ body {
   border-radius: 5px;
 }
 
+.phenotypes > .explanation {
+  padding-top: 10px;
+  font-size: 0.8em;
+  color: #555;
+}
+
 .normal {
-  background-color: #DFF2BF;
+  background-color: #DFF2DF;
 }
 
 .warn {
-  background-color: #FEEFB3;
+  background-color: #FFF2DF;
 }
 
 .alert {
-  background-color: #FFBABA;
+  background-color: #ffe5e5;
+  border: solid 1px #ff7a7a;
 }

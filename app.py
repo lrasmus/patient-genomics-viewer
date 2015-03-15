@@ -13,6 +13,7 @@ MAX_LINK_LEN = 20
 # we only care about genomic stuff here
 REF_RE = re.compile(r'^(?:Condition|Patient|Sequence|Procedure|Observation)/.*$')
 # list of scopes we need
+# list of scopes we need
 SCOPES = ['user/Sequence.read',
         'user/Observation.read',
         'user/Condition.read',
@@ -47,6 +48,14 @@ CYP2C19_LOOKUP = {
   '*2/*3': {'text': 'Poor Metabolizer', 'display_class': 'alert'},
   '*3/*3': {'text': 'Poor Metabolizer', 'display_class': 'alert'}
 }
+
+CYP2C19_DETAILS = {
+  'Extensive Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, you should be able to process it normally.', 'You should be able to process your clopidogrel normally.'],
+  'Ultrarapid Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, you should be able to process it normally.', 'You should be able to process your clopidogrel normally.'],
+  'Intermediate Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, there is a chance you may be at a risk for an adverse cardiovascular event.  You should share these results with your care team.', 'People with your genotype are at a slight risk for an adverse cardiovascular event while taking clopidogrel.  You should share these results with your care team, and see if your physician may want to switch you to another medication.'],
+  'Poor Metabolizer': ['If your doctor ever prescribes you the drug clopidogrel, you are at risk for an adverse cardiovascular event.  You should share these results with your care team.', 'People with your genotype are at risk for an adverse cardiovascular event while taking clopidogrel.  You should share these results with your care team, and see if your physician may want to switch you to another medication.']
+}
+
 
 app = Flask(__name__)
 
@@ -160,12 +169,14 @@ def require_oauth(view):
 
 def translate_snp_to_star_variant(lookup_table, snps, default):
     star_variants = [default, default]
+    has_relevant_snps = False
     for snp in snps:
         values = snp['content']['read']
         snp_info = lookup_table.get(snp['content']['snp'])
         if not snp_info:
             continue
 
+        has_relevant_snps = True
         # Homozygote
         if snp_info['normal'] != values[0] and snp_info['normal'] != values[1]:
             star_variants = [snp_info['star'], snp_info['star']]
@@ -175,7 +186,11 @@ def translate_snp_to_star_variant(lookup_table, snps, default):
             if star_variants[1] != default:
                 star_variants[0] = star_variants[1]
             star_variants[1] = snp_info['star']
-    return star_variants
+            
+    if not has_relevant_snps:
+        return None
+    else:
+        return star_variants
     
     
 def translate_genotype_to_phenotype(lookup_table, genotype, default):
@@ -184,6 +199,13 @@ def translate_genotype_to_phenotype(lookup_table, genotype, default):
         genotype_info = lookup_table[default]
 
     return genotype_info
+    
+def get_details(lookup_table, phenotype, is_on_med):
+    result = lookup_table.get(phenotype)
+    if not result:
+      return ''
+    
+    return lookup_table[phenotype][(1 if is_on_med else 0)]
 
 @app.route('/')
 @require_oauth
@@ -203,16 +225,21 @@ def patient(patient_id):
 
     cyp2c19 = get_fhir_bundle('Observation', {'subject:Patient': patient_id, 'name': '124020'})
     phenotypes = []
+    cyp2c19_phenotype = None
     if cyp2c19['totalResults'] < 1:
       print '** Need to look up sequences for CYP2C19'
       cyp2c19_star = translate_snp_to_star_variant(CYP2C19_SNP_STAR_TRANSLATION, seq['entry'], '*1')
-      cyp2c19_phenotype = translate_genotype_to_phenotype(CYP2C19_LOOKUP, '/'.join(cyp2c19_star), {'text': 'Intermediate Metabolizer', 'display_class': 'warn'})
-      phenotypes.append({'text': 'You are predicted to be a ' + cyp2c19_phenotype['text'] + ' of the drug clopidogrel', 'display_class': cyp2c19_phenotype['display_class']})
+      if not cyp2c19_star is None:
+          cyp2c19_phenotype = translate_genotype_to_phenotype(CYP2C19_LOOKUP, '/'.join(cyp2c19_star), {'text': 'Intermediate Metabolizer', 'display_class': 'warn'})
+          phenotypes.append({'text': 'You are predicted to be a(n) ' + cyp2c19_phenotype['text'] + ' of the drug clopidogrel', 'display_class': cyp2c19_phenotype['display_class']})
     else:
       cyp2c19_phenotype = translate_genotype_to_phenotype(CYP2C19_LOOKUP, cyp2c19['entry'][0]['content']['valueString'], {'text': 'Intermediate Metabolizer', 'display_class': 'warn'})
-      phenotypes.append({'text': 'You are predicted to be a ' + cyp2c19_phenotype['text'] + ' of the drug clopidogrel', 'display_class': cyp2c19_phenotype['display_class']})
+      phenotypes.append({'text': 'You are predicted to be a(n) ' + cyp2c19_phenotype['text'] + ' of the drug clopidogrel', 'display_class': cyp2c19_phenotype['display_class']})
 
-    #print translate_snp_to_star_variant(CYP2C19_SNP_STAR_TRANSLATION, [{'code': 'rs4244285', 'value': 'A/G'}, {'code': 'rs28399504', 'value': 'A/A'}], '*1')
+    if cyp2c19_phenotype:
+      found_med = next((med for med in meds['entry'] if med['content']['medication']['reference'] == 'Medication/clopidogrel'), None)
+      phenotypes[0]['details'] = get_details(CYP2C19_DETAILS, cyp2c19_phenotype['text'], not (found_med is None))
+
     return render_template('genomics_view.html', patient= patient['entry'], medications= meds['entry'], observations= cyp2c19['entry'], sequences= seq['entry'], phenotypes= phenotypes)
         
     

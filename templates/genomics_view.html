@@ -26,6 +26,9 @@
         <div class="col-md-2"></div>
         <div class="col-md-8 phenotypes {{phenotype.display_class}}">
           {{ phenotype.text }}
+          <div class="explanation">
+          {{ phenotype.details }}
+          </div>
         </div>
         <div class="col-md-2"></div>
       </div>
@@ -33,7 +36,7 @@
       
       <div class="row">
         <div class="col-md-6">
-          <h2>Medications</h2>
+          <h2>Current Medications</h2>
           {% if medications %}
             <ul>
             {% for medication in medications %}
@@ -45,7 +48,7 @@
         </div>
         
         <div class="col-md-6">
-          <h2>Genotypes</h2>
+          <h2>Genotype Results</h2>
           {% if observations or sequences %}
             <ul>
             {% for observation in observations %}
@@ -56,7 +59,7 @@
             {% endfor %}
             {% for sequence in sequences %}
               <li>
-                {{ sequence.content.snp }}:
+                <a href="http://www.snpedia.com/index.php/{{ sequence.content.snp }}">{{ sequence.content.snp }}</a>:
                 {{ '/'.join(sequence.content.read) }}
               </li>
             {% endfor %}
