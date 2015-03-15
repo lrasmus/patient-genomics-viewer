@@ -31,6 +31,23 @@ CYP2C19_SNP_STAR_TRANSLATION = {
   'rs12248560' : { 'normal': 'C', 'star': '*17' }
 }
 
+CYP2C19_LOOKUP = {
+  '*1/*1': {'text': 'Extensive Metabolizer', 'display_class': 'normal'},
+  '*1/*2': {'text': 'Intermediate Metabolizer', 'display_class': 'warn'},
+  '*1/*3': {'text': 'Intermediate Metabolizer', 'display_class': 'warn'},
+  '*1/*4': {'text': 'Intermediate Metabolizer', 'display_class': 'warn'},
+  '*1/*5': {'text': 'Intermediate Metabolizer', 'display_class': 'warn'},
+  '*1/*6': {'text': 'Intermediate Metabolizer', 'display_class': 'warn'},
+  '*1/*7': {'text': 'Intermediate Metabolizer', 'display_class': 'warn'},
+  '*1/*8': {'text': 'Intermediate Metabolizer', 'display_class': 'warn'},
+  '*1/*17': {'text': 'Ultrarapid Metabolizer', 'display_class': 'normal'},
+  '*2/*17': {'text': 'Intermediate Metabolizer', 'display_class': 'warn'},
+  '*17/*17': {'text': 'Ultrarapid Metabolizer', 'display_class': 'normal'},
+  '*2/*2': {'text': 'Poor Metabolizer', 'display_class': 'alert'},
+  '*2/*3': {'text': 'Poor Metabolizer', 'display_class': 'alert'},
+  '*3/*3': {'text': 'Poor Metabolizer', 'display_class': 'alert'}
+}
+
 app = Flask(__name__)
 
 class OAuthError(Exception):
@@ -144,8 +161,11 @@ def require_oauth(view):
 def translate_snp_to_star_variant(lookup_table, snps, default):
     star_variants = [default, default]
     for snp in snps:
-        values = snp['value'].split('/')
-        snp_info = lookup_table[snp['code']]
+        values = snp['content']['read']
+        snp_info = lookup_table.get(snp['content']['snp'])
+        if not snp_info:
+            continue
+
         # Homozygote
         if snp_info['normal'] != values[0] and snp_info['normal'] != values[1]:
             star_variants = [snp_info['star'], snp_info['star']]
@@ -157,6 +177,13 @@ def translate_snp_to_star_variant(lookup_table, snps, default):
             star_variants[1] = snp_info['star']
     return star_variants
     
+    
+def translate_genotype_to_phenotype(lookup_table, genotype, default):
+    genotype_info = lookup_table.get(genotype)
+    if not genotype_info:
+        genotype_info = lookup_table[default]
+
+    return genotype_info
 
 @app.route('/')
 @require_oauth
@@ -172,12 +199,21 @@ def patient(patient_id):
     print 'Displaying patient: ' + patient_id
     meds = get_fhir_bundle('MedicationPrescription', {'patient': patient_id})
     seq = get_fhir_bundle('Sequence', {'patient': patient_id})
-    cyp2c19 = get_fhir_bundle('Observation', {'subject:Patient': patient_id, 'name': '124020'})
     patient = get_fhir_bundle('Patient/' + patient_id, {})
-    
-    print translate_snp_to_star_variant(CYP2C19_SNP_STAR_TRANSLATION, seq['entry'], '*1')
+
+    cyp2c19 = get_fhir_bundle('Observation', {'subject:Patient': patient_id, 'name': '124020'})
+    phenotypes = []
+    if cyp2c19['totalResults'] < 1:
+      print '** Need to look up sequences for CYP2C19'
+      cyp2c19_star = translate_snp_to_star_variant(CYP2C19_SNP_STAR_TRANSLATION, seq['entry'], '*1')
+      cyp2c19_phenotype = translate_genotype_to_phenotype(CYP2C19_LOOKUP, '/'.join(cyp2c19_star), {'text': 'Intermediate Metabolizer', 'display_class': 'warn'})
+      phenotypes.append({'text': 'You are predicted to be a ' + cyp2c19_phenotype['text'] + ' of the drug clopidogrel', 'display_class': cyp2c19_phenotype['display_class']})
+    else:
+      cyp2c19_phenotype = translate_genotype_to_phenotype(CYP2C19_LOOKUP, cyp2c19['entry'][0]['content']['valueString'], {'text': 'Intermediate Metabolizer', 'display_class': 'warn'})
+      phenotypes.append({'text': 'You are predicted to be a ' + cyp2c19_phenotype['text'] + ' of the drug clopidogrel', 'display_class': cyp2c19_phenotype['display_class']})
+
     #print translate_snp_to_star_variant(CYP2C19_SNP_STAR_TRANSLATION, [{'code': 'rs4244285', 'value': 'A/G'}, {'code': 'rs28399504', 'value': 'A/A'}], '*1')
-    return render_template('genomics_view.html', patient= patient['entry'], medications= meds['entry'], observations= cyp2c19['entry'], sequences= seq['entry'])
+    return render_template('genomics_view.html', patient= patient['entry'], medications= meds['entry'], observations= cyp2c19['entry'], sequences= seq['entry'], phenotypes= phenotypes)
         
     
 

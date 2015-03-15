@@ -7,17 +7,8 @@
 
     <title>FHIR Genomics Viewer</title>
 
-    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-      body {
-        padding-top: 20px;
-        padding-bottom: 20px;
-      }
-
-      .navbar {
-        margin-bottom: 20px;
-      }
-    </style>
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='main.css') }}">
   </head>
 
   <body>
@@ -26,19 +17,19 @@
       <nav class="navbar navbar-default">
       <div class="container-fluid">
         <div class="navbar-header">
-          <a class="navbar-brand" href="#">SMART on FHIR - Patient Genomics Viewer</a>
+          <a class="navbar-brand" href="#">SMART on FHIR - Patient Genomics Viewer for {{ patient[0].content.name[0].text }}</a>
         </div>
       </div>
       </nav>
+      {% for phenotype in phenotypes %}
       <div class="row">
-        <h1>
-          {% if patient %}
-            {{ patient[0].content.name[0].text }}
-          {% else %}
-            (No patient)
-          {% endif %}
-        </h1>
+        <div class="col-md-2"></div>
+        <div class="col-md-8 phenotypes {{phenotype.display_class}}">
+          {{ phenotype.text }}
+        </div>
+        <div class="col-md-2"></div>
       </div>
+      {% endfor %}
       
       <div class="row">
         <div class="col-md-6">
@@ -55,7 +46,7 @@
         
         <div class="col-md-6">
           <h2>Genotypes</h2>
-          {% if observations %}
+          {% if observations or sequences %}
             <ul>
             {% for observation in observations %}
               <li>
@@ -65,7 +56,8 @@
             {% endfor %}
             {% for sequence in sequences %}
               <li>
-                {{ sequence.content.text.div|safe }}
+                {{ sequence.content.snp }}:
+                {{ '/'.join(sequence.content.read) }}
               </li>
             {% endfor %}
             </ul>
@@ -77,8 +69,8 @@
     </div>
 
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
   </body>
 </html>
 

@@ -1,0 +1,30 @@
+body {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.navbar {
+  margin-bottom: 20px;
+}
+
+.phenotypes {
+  background-color: #EEEEEE;
+  text-align: center;
+  padding: 20px;
+  font-size: 1.2em;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+}
+
+.normal {
+  background-color: #DFF2BF;
+}
+
+.warn {
+  background-color: #FEEFB3;
+}
+
+.alert {
+  background-color: #FFBABA;
+}
